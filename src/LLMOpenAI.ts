@@ -1,16 +1,17 @@
 import OpenAI from "openai";
 import {
-  ChatCompletionChunk,
   ChatCompletionFunctionTool,
   ChatCompletionMessageParam,
-  ChatCompletionMessageToolCall,
 } from "openai/resources";
 
-// interface LLMMessage {
-//   role: "user" | "assistant" | "tool" | "developer";
-//   content: string;
-//   tool_calls?: ChatCompletionChunk.Choice.Delta.ToolCall[];
-// }
+export interface ToolCall {
+  type: "function";
+  id: string;
+  function: {
+    name: string;
+    arguments: string;
+  };
+}
 
 export class LLMOpenAI {
   private readonly client: OpenAI;
@@ -18,9 +19,10 @@ export class LLMOpenAI {
 
   constructor() {
     this.client = new OpenAI({
-      baseURL: process.env.OPENAI_BASE_URL,
-      apiKey: process.env.OPENAI_API_KEY,
+      baseURL: process.env.LLM_MODEL_URL,
+      apiKey: process.env.LLM_KEY,
     });
+    this.messages = [];
   }
 
   addMessage(message: ChatCompletionMessageParam) {
@@ -36,7 +38,7 @@ export class LLMOpenAI {
     });
 
     let streamContent = "";
-    let toolCalls: ChatCompletionMessageToolCall[] = [];
+    let toolCalls: ToolCall[] = [];
     for await (const chunk of response) {
       const delta = chunk.choices[0].delta;
       if (delta.content) {
@@ -45,23 +47,36 @@ export class LLMOpenAI {
       }
 
       if (delta.tool_calls) {
-        delta.tool_calls.forEach((call) => {
-          toolCalls.push({
-            type: "function",
-            id: call.id!,
-            function: {
-              name: call.function?.name || "",
-              arguments: call.function?.arguments || "",
-            },
-          });
-        });
+        for (const toolCallChunk of delta.tool_calls) {
+          if (toolCalls.length <= toolCallChunk.index) {
+            toolCalls.push({
+              type: "function",
+              id: "",
+              function: { name: "", arguments: "" },
+            });
+          }
+          let currentCall = toolCalls[toolCallChunk.index];
+          if (toolCallChunk.id) currentCall.id += toolCallChunk.id;
+          if (toolCallChunk.function?.name)
+            currentCall.function.name += toolCallChunk.function.name;
+          if (toolCallChunk.function?.arguments)
+            currentCall.function.arguments += toolCallChunk.function.arguments;
+        }
       }
     }
 
     this.messages.push({
       role: "assistant",
       content: streamContent,
-      tool_calls: toolCalls,
+      tool_calls: toolCalls.map((toolCall) => ({
+        type: "function",
+        id: toolCall.id,
+        function: {
+          name: toolCall.function.name,
+          // OpenAI API 期望此处为字符串，不能提前 JSON.parse
+          arguments: toolCall.function.arguments,
+        },
+      })),
     });
 
     return {
