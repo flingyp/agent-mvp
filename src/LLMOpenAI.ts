@@ -61,6 +61,8 @@ export class LLMOpenAI {
             currentCall.function.name += toolCallChunk.function.name;
           if (toolCallChunk.function?.arguments)
             currentCall.function.arguments += toolCallChunk.function.arguments;
+
+          process.stdout.write(toolCallChunk?.function?.arguments || "");
         }
       }
     }

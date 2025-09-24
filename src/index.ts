@@ -33,7 +33,7 @@ async function main() {
     "kimi-k2-0905-preview",
     [fileMCP, howtocookMCP],
     "You are a helpful assistant that can help me cook a meal.",
-    "我想要吃西红柿炒鸡蛋，查询一下如何做，输出一份详细的关于西红柿炒鸡蛋的MD文档到output目录下"
+    "我想要吃辣椒炒肉，查询一下如何做，输出一份详细的关于辣椒炒肉的MD文档到output目录下"
   );
   console.log("[Main] Agent实例创建完成\n");
 

@@ -32,6 +32,27 @@ export class Agent {
     console.log("[Agent] Agent初始化完成");
   }
 
+  private safeParseToolArguments(rawArguments: string): any {
+    try {
+      return JSON.parse(rawArguments);
+    } catch (firstError) {
+      // 修复常见问题：未转义的换行符/回车符导致字符串未闭合
+      const repaired = rawArguments
+        .replace(/\r\n?/g, "\n")
+        .replace(/\n/g, "\\n");
+      try {
+        return JSON.parse(repaired);
+      } catch (secondError) {
+        console.error("[Agent] 解析工具参数失败，返回原始字符串以便诊断:", {
+          firstError,
+          secondError,
+          rawArguments,
+        });
+        throw secondError;
+      }
+    }
+  }
+
   convertOpenAITool(tool: Tool): ChatCompletionFunctionTool {
     return {
       type: "function",
@@ -59,7 +80,7 @@ export class Agent {
     console.log("[Agent] 发起第一次LLM对话");
     let response = await this.llm.chat(this.model, allTools);
     while (true) {
-      if (response.toolCalls) {
+      if (response.toolCalls && response.toolCalls.length > 0) {
         console.log("[Agent] 检测到工具调用，数量:", response.toolCalls.length);
 
         for (const toolCall of response.toolCalls) {
@@ -82,7 +103,7 @@ export class Agent {
               );
               const toolRes = await mcp?.invoke(
                 tool,
-                JSON.parse(toolCall.function.arguments)
+                this.safeParseToolArguments(toolCall.function.arguments)
               );
               console.log("toolRes:", toolRes);
               if (toolRes?.content) {
