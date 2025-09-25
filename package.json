@@ -4,7 +4,9 @@
   "description": "Agent MVP",
   "main": "index.js",
   "scripts": {
-    "dev": "esno src/index.ts"
+    "dev": "esno src/index.ts",
+    "lint": "prettier . --write && eslint .",
+    "lint:fix": "prettier . --write && eslint . --fix"
   },
   "keywords": [],
   "author": "flingyp",
@@ -17,8 +19,12 @@
     "openai": "^5.23.0"
   },
   "devDependencies": {
+    "@flypeng/eslint-config": "^3.0.2",
+    "@prettier/plugin-oxc": "^0.0.4",
     "@types/node": "^24.5.2",
+    "eslint": "^9.36.0",
     "esno": "^4.8.0",
+    "prettier": "^3.6.2",
     "typescript": "^5.9.2"
   }
 }
