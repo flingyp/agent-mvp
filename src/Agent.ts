@@ -3,6 +3,7 @@ import { LLMOpenAI } from './LLMOpenAI';
 import { Logger } from './Logger';
 import { ChatCompletionFunctionTool } from 'openai/resources';
 import { Tool } from '@modelcontextprotocol/sdk/types.js';
+import { jsonrepair } from 'jsonrepair';
 
 export class Agent {
   private readonly model: string;
@@ -37,27 +38,6 @@ export class Agent {
     }
 
     this.logger.success('Agent初始化完成');
-  }
-
-  private safeParseToolArguments(rawArguments: string): any {
-    try {
-      return JSON.parse(rawArguments);
-    } catch (firstError) {
-      // 修复常见问题：未转义的换行符/回车符导致字符串未闭合
-      const repaired = rawArguments
-        .replace(/\r\n?/g, '\n')
-        .replace(/\n/g, '\\n');
-      try {
-        return JSON.parse(repaired);
-      } catch (secondError) {
-        this.logger.error('解析工具参数失败，返回原始字符串以便诊断:', {
-          firstError,
-          secondError,
-          rawArguments,
-        });
-        throw secondError;
-      }
-    }
   }
 
   convertOpenAITool(tool: Tool): ChatCompletionFunctionTool {
@@ -114,7 +94,7 @@ export class Agent {
               );
               const toolRes = await currentMCPClient?.invoke(
                 currentTool,
-                this.safeParseToolArguments(toolCall.function.arguments),
+                JSON.parse(jsonrepair(toolCall.function.arguments)),
               );
               this.logger.debug('工具执行结果:', toolRes);
               if (toolRes?.content) {

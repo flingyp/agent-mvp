@@ -17,6 +17,7 @@
     "@modelcontextprotocol/sdk": "^1.18.1",
     "chalk": "^5.6.2",
     "dotenv": "^17.2.2",
+    "jsonrepair": "^3.13.1",
     "openai": "^5.23.0"
   },
   "devDependencies": {
