@@ -1,14 +1,20 @@
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
 import { Tool } from '@modelcontextprotocol/sdk/types.js';
+import { Logger } from './Logger';
 
 export class MCPClient {
   private mcp: Client;
   private tools: Tool[] = [];
   private command: string;
   private args: string[];
+  private readonly logger: Logger;
+  private readonly name: string;
 
   constructor(name: string, version: string, command: string, args: string[]) {
+    this.name = name;
+    this.logger = Logger.getInstance(`MCP-${name}`);
+
     this.command = command;
     this.args = args;
 
@@ -16,45 +22,46 @@ export class MCPClient {
       name: name,
       version: version,
     });
+
+    this.logger.debug('MCP客户端创建完成，命令:', command, '参数:', args);
   }
 
   async connect() {
-    console.log('[MCPClient] 开始连接MCP服务器');
-    console.log('[MCPClient] 创建传输层', this.command, this.args);
+    this.logger.info('开始连接MCP服务器');
+    this.logger.debug('创建传输层', this.command, this.args);
 
     const transport = new StdioClientTransport({
       command: this.command,
       args: this.args,
     });
 
-    console.log('[MCPClient] 正在连接...');
+    this.logger.info('正在连接...');
     await this.mcp.connect(transport);
-    console.log('[MCPClient] 连接成功，获取工具列表');
+    this.logger.success('连接成功，获取工具列表');
 
     const toolsResult = await this.mcp.listTools();
     this.tools = toolsResult.tools;
 
-    console.log('[MCPClient] 获取到工具数量:', this.tools.length);
-    console.log(
-      '[MCPClient] 工具列表:',
+    this.logger.success('获取到工具数量:', this.tools.length);
+    this.logger.debug(
+      '工具列表:',
       this.tools.map((tool) => tool.name),
     );
   }
 
   async close() {
-    console.log('[MCPClient] 关闭MCP连接');
+    this.logger.info('关闭MCP连接');
     await this.mcp.close();
-    console.log('[MCPClient] MCP连接已关闭');
+    this.logger.success('MCP连接已关闭');
   }
 
   getTools() {
-    console.log('[MCPClient] 获取工具列表，数量:', this.tools.length);
+    this.logger.debug('获取工具列表，数量:', this.tools.length);
     return this.tools;
   }
 
-  async invoke(tool: Tool, args: any) {
-    console.log('[MCPClient] 调用工具:', tool.name);
-    console.log('[MCPClient] 工具参数:', args);
+  async invoke(tool: Tool, args: Record<string, unknown>) {
+    this.logger.toolCall(tool.name, args);
 
     try {
       const result = await this.mcp.callTool({
@@ -62,14 +69,14 @@ export class MCPClient {
         arguments: args,
       });
 
-      console.log('[MCPClient] 工具调用成功');
+      this.logger.toolResult(true);
       if (result.content) {
-        console.log('[MCPClient] 返回结果类型:', typeof result.content);
+        this.logger.debug('返回结果类型:', typeof result.content);
       }
 
       return result;
     } catch (error) {
-      console.error('[MCPClient] 工具调用失败:', error);
+      this.logger.toolResult(false, error);
       throw error;
     }
   }
